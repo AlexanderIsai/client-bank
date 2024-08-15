@@ -1,61 +1,111 @@
 package ua.danit.clientbank.service.impl;
-import ua.danit.clientbank.dao.AccountDAO;
+import jakarta.transaction.Transactional;
 import ua.danit.clientbank.model.Account;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ua.danit.clientbank.repository.AccountRepository;
 import ua.danit.clientbank.service.ir.AccountService;
 
 import java.util.List;
-/**
- * description
- *
- * @author Alexander Isai on 16.07.2024.
- */
-
+import java.util.Optional;
 
 @Service
+@Transactional
 public class AccountServiceImpl implements AccountService {
-    private final AccountDAO accountDao;
+
+    private final AccountRepository accountRepository;
 
     @Autowired
-    public AccountServiceImpl(AccountDAO accountDao) {
-        this.accountDao = accountDao;
+    public AccountServiceImpl(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
     }
 
-    @Override
-    public Account createAccount(Account account) {
-        return accountDao.save(account);
+    public Account save(Account account) {
+        return accountRepository.save(account);
     }
 
-    @Override
-    public Account getAccountById(Long id) {
-        return accountDao.getOne(id);
+    public boolean delete(Account account) {
+        if (accountRepository.existsById(account.getId())) {
+            accountRepository.delete(account);
+            return true;
+        }
+        return false;
+    }
+
+    public void deleteAll(List<Account> accounts) {
+        accountRepository.deleteAll(accounts);
+    }
+
+    public List<Account> findAll() {
+        return accountRepository.findAll();
+    }
+
+    public boolean deleteById(long id) {
+        if (accountRepository.existsById(id)) {
+            accountRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    public Account getAccountById(long id) {
+        return accountRepository.findById(id).orElse(null);
     }
 
     @Override
     public List<Account> getAllAccounts() {
-        return accountDao.findAll();
+        return accountRepository.findAll();
     }
 
-    @Override
-    public Account updateAccount(Long id, Account account) {
-        Account existingAccount = accountDao.getOne(id);
-        if (existingAccount != null) {
-            existingAccount.setCurrency(account.getCurrency());
-            existingAccount.setBalance(account.getBalance());
-            existingAccount.setCustomer(account.getCustomer());
-            return accountDao.save(existingAccount);
+    public Account deposit(String number, Double amount) {
+        Optional<Account> optionalAccount = accountRepository.findByNumber(number);
+        if (optionalAccount.isPresent() && amount > 0) {
+            Account account = optionalAccount.get();
+            account.setBalance(account.getBalance() + amount);
+            return accountRepository.save(account);
         }
         return null;
     }
 
-    @Override
-    public boolean deleteAccount(Long id) {
-        return accountDao.deleteById(id);
+    public Account withdraw(String number, Double amount) {
+        Optional<Account> optionalAccount = accountRepository.findByNumber(number);
+        if (optionalAccount.isPresent() && amount > 0) {
+            Account account = optionalAccount.get();
+            if (account.getBalance() >= amount) {
+                account.setBalance(account.getBalance() - amount);
+                return accountRepository.save(account);
+            }
+        }
+        return null;
+    }
+    public boolean transfer(String fromNumber, String toNumber, Double amount) {
+        Optional<Account> fromAccountOpt = accountRepository.findByNumber(fromNumber);
+        Optional<Account> toAccountOpt = accountRepository.findByNumber(toNumber);
+
+        if (fromAccountOpt.isPresent() && toAccountOpt.isPresent() && amount > 0) {
+            Account fromAccount = fromAccountOpt.get();
+            Account toAccount = toAccountOpt.get();
+
+            if (fromAccount.getBalance() >= amount) {
+                fromAccount.setBalance(fromAccount.getBalance() - amount);
+                toAccount.setBalance(toAccount.getBalance() + amount);
+                accountRepository.save(fromAccount);
+                accountRepository.save(toAccount);
+                return true;
+            }
+        }
+        return false;
     }
 
-        @Override
-        public Account findByAccountNumber(String accountNumber) {
-            return accountDao.findByAccountNumber(accountNumber);
-        }
+    @Override
+    public Account updateAccount(long id, Account account) {
+        account.setId(id);
+        accountRepository.save(account);
+        return account;
+    }
+
+    @Override
+    public Account findByAccountNumber(String accountNumber) {
+        return accountRepository.findByNumber(accountNumber).orElseThrow();
+    }
 }

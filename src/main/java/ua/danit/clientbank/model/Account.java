@@ -1,30 +1,37 @@
 package ua.danit.clientbank.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
-/**
- * description
- *
- * @author Alexander Isai on 16.07.2024.
- */
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class Account {
-    private Long id;
+@AllArgsConstructor
+@Entity
+public class Account extends AbstractEntity {
+
+    @Column(nullable = false, unique = true)
     private String number;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Currency currency;
-    private Double balance;
+
+    @Column(nullable = false)
+    private Double balance = 0.0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    @JsonBackReference
     private Customer customer;
 
     public Account(Currency currency, Customer customer) {
         this.number = UUID.randomUUID().toString();
         this.currency = currency;
-        this.balance = 0.0;
         this.customer = customer;
     }
 }

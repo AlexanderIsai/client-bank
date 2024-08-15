@@ -1,56 +1,84 @@
 package ua.danit.clientbank.service.impl;
-import ua.danit.clientbank.dao.CustomerDAO;
+import jakarta.transaction.Transactional;
+import ua.danit.clientbank.model.Account;
 import ua.danit.clientbank.model.Customer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ua.danit.clientbank.repository.AccountRepository;
+import ua.danit.clientbank.repository.CustomerRepository;
+import ua.danit.clientbank.repository.EmployerRepository;
 import ua.danit.clientbank.service.ir.CustomerService;
-/**
- * description
- *
- * @author Alexander Isai on 16.07.2024.
- */
-
 
 import java.util.List;
 
 @Service
+@Transactional
 public class CustomerServiceImpl implements CustomerService {
-    private final CustomerDAO customerDao;
 
     @Autowired
-    public CustomerServiceImpl(CustomerDAO customerDao) {
-        this.customerDao = customerDao;
+    private AccountRepository accountRepository;
+    @Autowired
+    private CustomerRepository customerRepository;
+    @Autowired
+    private EmployerRepository employerRepository;
+
+    public Customer save(Customer customer) {
+        accountRepository.saveAll(customer.getAccounts());
+        customer.getEmployers().forEach(employer -> {
+            System.out.println("Saving employer: " + employer);
+            employerRepository.save(employer);
+        });
+        System.out.println("Saving customer: " + customer);
+        return customerRepository.save(customer);
     }
 
-    @Override
-    public Customer createCustomer(Customer customer) {
-        return customerDao.save(customer);
-    }
-
-    @Override
-    public Customer getCustomerById(Long id) {
-        return customerDao.getOne(id);
-    }
-
-    @Override
-    public List<Customer> getAllCustomers() {
-        return customerDao.findAll();
-    }
-
-    @Override
-    public Customer updateCustomer(Long id, Customer customer) {
-        Customer existingCustomer = customerDao.getOne(id);
-        if (existingCustomer != null) {
-            existingCustomer.setName(customer.getName());
-            existingCustomer.setEmail(customer.getEmail());
-            existingCustomer.setAge(customer.getAge());
-            return customerDao.save(existingCustomer);
+    public Customer updateCustomer(Long id, Customer updatedCustomer) {
+        if (!customerRepository.existsById(id)) {
+            return null;
         }
-        return null;
+
+        Customer existingCustomer = customerRepository.findById(id).orElseThrow();
+        existingCustomer.setName(updatedCustomer.getName());
+        existingCustomer.setEmail(updatedCustomer.getEmail());
+        existingCustomer.setAge(updatedCustomer.getAge());
+
+        existingCustomer.getAccounts().clear();
+        existingCustomer.getAccounts().addAll(updatedCustomer.getAccounts());
+        existingCustomer.getAccounts().forEach(account -> account.setCustomer(existingCustomer));
+        accountRepository.saveAll(existingCustomer.getAccounts());
+
+        existingCustomer.getEmployers().clear();
+        existingCustomer.getEmployers().addAll(updatedCustomer.getEmployers());
+        employerRepository.saveAll(existingCustomer.getEmployers());
+
+        return customerRepository.save(existingCustomer);
     }
 
-    @Override
-    public boolean deleteCustomer(Long id) {
-        return customerDao.deleteById(id);
+    public boolean delete(Customer customer) {
+        if (customerRepository.existsById(customer.getId())) {
+            customerRepository.delete(customer);
+            return true;
+        }
+        return false;
+    }
+
+    public void deleteAll(List<Customer> customers) {
+        customerRepository.deleteAll(customers);
+    }
+
+    public List<Customer> findAll() {
+        return customerRepository.findAll();
+    }
+
+    public boolean deleteById(long id) {
+        if (customerRepository.existsById(id)) {
+            customerRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    public Customer getById(long id) {
+        return customerRepository.findById(id).orElse(null);
     }
 }
