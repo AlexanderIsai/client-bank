@@ -1,9 +1,11 @@
 package ua.danit.clientbank.service.impl;
-import jakarta.transaction.Transactional;
-import ua.danit.clientbank.model.Account;
-import ua.danit.clientbank.model.Customer;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ua.danit.clientbank.model.Customer;
 import ua.danit.clientbank.repository.AccountRepository;
 import ua.danit.clientbank.repository.CustomerRepository;
 import ua.danit.clientbank.repository.EmployerRepository;
@@ -12,38 +14,37 @@ import ua.danit.clientbank.service.ir.CustomerService;
 import java.util.List;
 
 @Service
-@Transactional
 public class CustomerServiceImpl implements CustomerService {
 
-    @Autowired
-    private AccountRepository accountRepository;
-    @Autowired
-    private CustomerRepository customerRepository;
-    @Autowired
-    private EmployerRepository employerRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
+    private final EmployerRepository employerRepository;
 
+    @Autowired
+    public CustomerServiceImpl(AccountRepository accountRepository, CustomerRepository customerRepository, EmployerRepository employerRepository) {
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.employerRepository = employerRepository;
+    }
+
+    @Override
+    @Transactional
     public Customer save(Customer customer) {
         accountRepository.saveAll(customer.getAccounts());
-        customer.getEmployers().forEach(employer -> {
-            System.out.println("Saving employer: " + employer);
-            employerRepository.save(employer);
-        });
-        System.out.println("Saving customer: " + customer);
+        employerRepository.saveAll(customer.getEmployers());
         return customerRepository.save(customer);
     }
 
+    @Override
+    @Transactional
     public Customer updateCustomer(Long id, Customer updatedCustomer) {
-        if (!customerRepository.existsById(id)) {
-            return null;
-        }
+        Customer existingCustomer = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        Customer existingCustomer = customerRepository.findById(id).orElseThrow();
         existingCustomer.setName(updatedCustomer.getName());
         existingCustomer.setEmail(updatedCustomer.getEmail());
         existingCustomer.setAge(updatedCustomer.getAge());
 
-        existingCustomer.getAccounts().clear();
-        existingCustomer.getAccounts().addAll(updatedCustomer.getAccounts());
         existingCustomer.getAccounts().forEach(account -> account.setCustomer(existingCustomer));
         accountRepository.saveAll(existingCustomer.getAccounts());
 
@@ -54,22 +55,7 @@ public class CustomerServiceImpl implements CustomerService {
         return customerRepository.save(existingCustomer);
     }
 
-    public boolean delete(Customer customer) {
-        if (customerRepository.existsById(customer.getId())) {
-            customerRepository.delete(customer);
-            return true;
-        }
-        return false;
-    }
-
-    public void deleteAll(List<Customer> customers) {
-        customerRepository.deleteAll(customers);
-    }
-
-    public List<Customer> findAll() {
-        return customerRepository.findAll();
-    }
-
+    @Override
     public boolean deleteById(long id) {
         if (customerRepository.existsById(id)) {
             customerRepository.deleteById(id);
@@ -78,7 +64,13 @@ public class CustomerServiceImpl implements CustomerService {
         return false;
     }
 
-    public Customer getById(long id) {
-        return customerRepository.findById(id).orElse(null);
+    public Page<Customer> findAll(Pageable pageable) {
+        return customerRepository.findAll(pageable);
+    }
+
+
+    @Override
+    public Customer findById(long id) {
+        return customerRepository.findById(id).orElseThrow(() -> new RuntimeException("Customer not found"));
     }
 }

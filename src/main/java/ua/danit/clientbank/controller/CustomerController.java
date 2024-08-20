@@ -1,21 +1,20 @@
 package ua.danit.clientbank.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ua.danit.clientbank.model.Account;
-import ua.danit.clientbank.model.Customer;
-import ua.danit.clientbank.service.ir.AccountService;
-import ua.danit.clientbank.service.ir.CustomerService;
+import ua.danit.clientbank.dto.customer.CustomerRequest;
+import ua.danit.clientbank.dto.customer.CustomerResponse;
+import ua.danit.clientbank.facade.CustomerFacade;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
- * description
- *
- * @author Alexander Isai on 16.07.2024.
+ * CustomerController handles API requests for customer operations.
  */
 @RequiredArgsConstructor
 @RestController
@@ -23,71 +22,42 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:3000")
 public class CustomerController {
 
-    private final CustomerService customerService;
-    private final AccountService accountService;
+    private final CustomerFacade customerFacade;
 
     @PostMapping
-    public Customer createCustomer(@RequestBody Customer customer) {
-        return customerService.save(customer);
+    public ResponseEntity<CustomerResponse> createCustomer(@RequestBody CustomerRequest customerRequest) {
+        CustomerResponse customerResponse = customerFacade.createCustomer(customerRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(customerResponse);
     }
 
     @PutMapping("/{id}")
-    public Customer updateCustomer(@PathVariable Long id, @RequestBody Customer customer) {
-        customer.setId(id);
-        return customerService.updateCustomer(id, customer);
+    public ResponseEntity<CustomerResponse> updateCustomer(@PathVariable Long id, @RequestBody CustomerRequest customerRequest) {
+        CustomerResponse customerResponse = customerFacade.updateCustomer(id, customerRequest);
+        return ResponseEntity.ok(customerResponse);
     }
 
     @DeleteMapping("/{id}")
-    public boolean deleteCustomer(@PathVariable long id) {
-        return customerService.deleteById(id);
+    public ResponseEntity<Void> deleteCustomer(@PathVariable long id) {
+        customerFacade.deleteCustomer(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
-    public Customer getCustomer(@PathVariable long id) {
-        return customerService.getById(id);
+    public ResponseEntity<CustomerResponse> getCustomer(@PathVariable long id) {
+        CustomerResponse customerResponse = customerFacade.getCustomerById(id);
+        if (customerResponse != null) {
+            return ResponseEntity.ok(customerResponse);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping
-    public List<Customer> getAllCustomers() {
-        return customerService.findAll();
+    public ResponseEntity<Page<CustomerResponse>> getAllCustomers(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CustomerResponse> customers = customerFacade.getAllCustomers(pageable);
+        return ResponseEntity.ok(customers);
     }
-
-    @PostMapping("/{customerId}/accounts")
-    public ResponseEntity<?> createAccountForCustomer(@PathVariable Long customerId, @RequestBody Account account) {
-        try {
-            Customer customer = customerService.getById(customerId);
-            if (customer != null) {
-                account.setNumber(UUID.randomUUID().toString());
-                account.setCustomer(customer);
-                account.setBalance(account.getBalance() != null ? account.getBalance() : 0.0);
-                accountService.save(account);
-                customer.getAccounts().add(account);
-                customerService.save(customer);
-                return ResponseEntity.ok(account);
-            }
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Customer not found");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error creating account: " + e.getMessage());
-        }
-    }
-
-
-    @DeleteMapping("/{customerId}/accounts/{accountId}")
-    public boolean deleteAccountFromCustomer(@PathVariable long customerId, @PathVariable long accountId) {
-        Customer customer = customerService.getById(customerId);
-        if (customer != null) {
-            Account accountToRemove = customer.getAccounts().stream()
-                    .filter(account -> account.getId() == accountId)
-                    .findFirst().orElse(null);
-
-            if (accountToRemove != null) {
-                customer.getAccounts().remove(accountToRemove);
-                customerService.save(customer);
-                accountService.delete(accountToRemove);
-                return true;
-            }
-        }
-        return false;
-    }
-
 }

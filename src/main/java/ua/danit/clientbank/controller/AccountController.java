@@ -1,18 +1,13 @@
 package ua.danit.clientbank.controller;
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
-import ua.danit.clientbank.model.Account;
-import ua.danit.clientbank.service.ir.AccountService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import ua.danit.clientbank.dto.account.AccountRequest;
+import ua.danit.clientbank.dto.account.AccountResponse;
+import ua.danit.clientbank.facade.AccountFacade;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
-
-/**
- * description
- *
- * @author Alexander Isai on 16.07.2024.
- */
 
 @RequiredArgsConstructor
 @RestController
@@ -20,66 +15,35 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class AccountController {
 
-    private final AccountService accountService;
+    private final AccountFacade accountFacade;
 
     @PostMapping
-    public ResponseEntity<Account> createAccount(@RequestBody Account account) {
-        try {
-            Account createdAccount = accountService.save(account);
-            return ResponseEntity.ok(createdAccount);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-        }
+    public ResponseEntity<AccountResponse> createAccount(@RequestBody AccountRequest accountRequest) {
+        AccountResponse createdAccount = accountFacade.createAccount(accountRequest);
+        return ResponseEntity.ok(createdAccount);
     }
 
-    @PostMapping("/deposit")
-    public ResponseEntity<Account> deposit(@RequestParam String number, @RequestParam Double amount) {
-        Account account = accountService.deposit(number, amount);
-        if (account != null) {
-            return ResponseEntity.ok(account);
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-    }
-
-    @PostMapping("/withdraw")
-    public ResponseEntity<Account> withdraw(@RequestParam String number, @RequestParam Double amount) {
-        Account account = accountService.withdraw(number, amount);
-        if (account != null) {
-            return ResponseEntity.ok(account);
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-    }
-
-    @PostMapping("/transfer")
-    public ResponseEntity<String> transfer(@RequestParam String fromNumber, @RequestParam String toNumber, @RequestParam Double amount) {
-        boolean success = accountService.transfer(fromNumber, toNumber, amount);
-        if (success) {
-            return ResponseEntity.ok("Transfer successful");
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Transfer failed");
+    @PutMapping("/{id}")
+    public ResponseEntity<AccountResponse> updateAccount(@PathVariable Long id, @RequestBody AccountRequest accountRequest) {
+        AccountResponse updatedAccount = accountFacade.updateAccount(id, accountRequest);
+        return ResponseEntity.ok(updatedAccount);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteAccount(@PathVariable long id) {
-        boolean deleted = accountService.deleteById(id);
-        if (deleted) {
-            return ResponseEntity.ok("Account deleted");
-        }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Account not found");
+    public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
+        accountFacade.deleteAccount(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Account> getAccount(@PathVariable long id) {
-        Account account = accountService.getAccountById(id);
-        if (account != null) {
-            return ResponseEntity.ok(account);
-        }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+    public ResponseEntity<AccountResponse> getAccountById(@PathVariable Long id) {
+        AccountResponse account = accountFacade.getAccountById(id);
+        return ResponseEntity.ok(account);
     }
 
     @GetMapping
-    public ResponseEntity<List<Account>> getAllAccounts() {
-        List<Account> accounts = accountService.findAll();
+    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
+        List<AccountResponse> accounts = accountFacade.getAllAccounts();
         return ResponseEntity.ok(accounts);
     }
 }

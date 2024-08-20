@@ -20,38 +20,32 @@ public class EmployerServiceImpl implements EmployerService {
         this.employerRepository = employerRepository;
     }
 
+    @Override
     public Employer save(Employer employer) {
         return employerRepository.save(employer);
     }
 
-    public boolean delete(Employer employer) {
-        if (employerRepository.existsById(employer.getId())) {
-            employerRepository.delete(employer);
-            return true;
-        }
-        return false;
+    @Override
+    public void delete(Employer employer) {
+        employerRepository.delete(employer);
     }
 
-    public void deleteAll(List<Employer> employers) {
-        employerRepository.deleteAll(employers);
-    }
-
+    @Override
     public List<Employer> findAll() {
         return employerRepository.findAll();
     }
 
-    public boolean deleteById(long id) {
-        if (employerRepository.existsById(id)) {
-            employerRepository.deleteById(id);
-            return true;
-        }
-        return false;
+    @Override
+    public void deleteById(long id) {
+        employerRepository.deleteById(id);
     }
 
+    @Override
     public Employer getById(long id) {
-        return employerRepository.findById(id).orElse(null);
+        return employerRepository.findById(id).orElseThrow(() -> new RuntimeException("Employer not found"));
     }
 
+    @Override
     public void saveAll(List<Employer> employers) {
         employerRepository.saveAll(employers);
     }

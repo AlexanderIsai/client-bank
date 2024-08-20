@@ -2,11 +2,7 @@ package ua.danit.clientbank.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-
+import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +12,7 @@ import java.util.List;
 @Entity
 public class Customer extends AbstractEntity {
 
-    @Column(name = "name",nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "email", unique = true, nullable = false)
@@ -25,11 +21,17 @@ public class Customer extends AbstractEntity {
     @Column(name = "age", nullable = false)
     private Integer age;
 
+    @Column(name = "phone_number", nullable = false)
+    private String phoneNumber;
+
+    @Column(name = "password", nullable = false)
+    @ToString.Exclude  // Exclude password from lombok generated toString()
+    private String password;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @JsonManagedReference
     private List<Account> accounts = new ArrayList<>();
-
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -39,9 +41,11 @@ public class Customer extends AbstractEntity {
     )
     private List<Employer> employers = new ArrayList<>();
 
-    public Customer(String name, String email, Integer age) {
+    public Customer(String name, String email, Integer age, String phoneNumber, String password) {
         this.name = name;
         this.email = email;
         this.age = age;
+        this.phoneNumber = phoneNumber;
+        this.password = password;
     }
 }
