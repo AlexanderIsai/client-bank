@@ -3,58 +3,46 @@ package ua.danit.clientbank.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ua.danit.clientbank.model.Employer;
-import ua.danit.clientbank.service.ir.EmployerService;
+import ua.danit.clientbank.dto.employer.EmployerRequest;
+import ua.danit.clientbank.dto.employer.EmployerResponse;
+import ua.danit.clientbank.facade.EmployerFacade;
 
 import java.util.List;
-
-/**
- * description
- *
- * @author Alexander Isai on 16.07.2024.
- */
 
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/employers")
 @CrossOrigin(origins = "*")
 public class EmployerController {
-    private final EmployerService employerService;
+    private final EmployerFacade employerFacade;
 
     @PostMapping
-    public ResponseEntity<Employer> createEmployer(@RequestBody Employer employer) {
-        Employer savedEmployer = employerService.save(employer);
+    public ResponseEntity<EmployerResponse> createEmployer(@RequestBody EmployerRequest employerRequest) {
+        EmployerResponse savedEmployer = employerFacade.createEmployer(employerRequest);
         return ResponseEntity.ok(savedEmployer);
     }
 
     @PutMapping("/{id}")
-    public Employer updateEmployer(@PathVariable Long id, @RequestBody Employer employer) {
-        employer.setId(id);
-        return employerService.save(employer);
+    public ResponseEntity<EmployerResponse> updateEmployer(@PathVariable Long id, @RequestBody EmployerRequest employerRequest) {
+        EmployerResponse updatedEmployer = employerFacade.updateEmployer(id, employerRequest);
+        return updatedEmployer != null ? ResponseEntity.ok(updatedEmployer) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployer(@PathVariable Long id) {
-        if (employerService.deleteById(id)) {
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        employerFacade.deleteEmployer(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Employer> getEmployerById(@PathVariable Long id) {
-        Employer employer = employerService.getById(id);
-        if (employer != null) {
-            return ResponseEntity.ok(employer);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<EmployerResponse> getEmployerById(@PathVariable Long id) {
+        EmployerResponse employerResponse = employerFacade.getEmployerById(id);
+        return employerResponse != null ? ResponseEntity.ok(employerResponse) : ResponseEntity.notFound().build();
     }
 
     @GetMapping
-    public ResponseEntity<List<Employer>> getAllEmployers() {
-        List<Employer> employers = employerService.findAll();
+    public ResponseEntity<List<EmployerResponse>> getAllEmployers() {
+        List<EmployerResponse> employers = employerFacade.getAllEmployers();
         return ResponseEntity.ok(employers);
     }
 }

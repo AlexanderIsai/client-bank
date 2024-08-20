@@ -1,4 +1,5 @@
 package ua.danit.clientbank.service.impl;
+
 import jakarta.transaction.Transactional;
 import ua.danit.clientbank.model.Account;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,88 +21,68 @@ public class AccountServiceImpl implements AccountService {
         this.accountRepository = accountRepository;
     }
 
+    @Override
     public Account save(Account account) {
         return accountRepository.save(account);
     }
 
-    public boolean delete(Account account) {
-        if (accountRepository.existsById(account.getId())) {
-            accountRepository.delete(account);
-            return true;
-        }
-        return false;
+    @Override
+    public void deleteById(long id) {
+        accountRepository.deleteById(id);
     }
 
-    public void deleteAll(List<Account> accounts) {
-        accountRepository.deleteAll(accounts);
-    }
-
+    @Override
     public List<Account> findAll() {
         return accountRepository.findAll();
     }
 
-    public boolean deleteById(long id) {
-        if (accountRepository.existsById(id)) {
-            accountRepository.deleteById(id);
+    @Override
+    public Account findById(long id) {
+        return accountRepository.findById(id).orElse(null);
+    }
+
+    @Override
+    public Account deposit(String number, Double amount) {
+        return accountRepository.findByNumber(number)
+                .map(account -> {
+                    if (amount > 0) {
+                        account.setBalance(account.getBalance() + amount);
+                        return accountRepository.save(account);
+                    }
+                    return null;
+                }).orElse(null);
+    }
+
+    @Override
+    public Account withdraw(String number, Double amount) {
+        return accountRepository.findByNumber(number)
+                .filter(account -> account.getBalance() >= amount)
+                .map(account -> {
+                    account.setBalance(account.getBalance() - amount);
+                    return accountRepository.save(account);
+                }).orElse(null);
+    }
+
+    @Override
+    public boolean transfer(String fromNumber, String toNumber, Double amount) {
+        Optional<Account> fromAccount = accountRepository.findByNumber(fromNumber);
+        Optional<Account> toAccount = accountRepository.findByNumber(toNumber);
+
+        if (fromAccount.isPresent() && toAccount.isPresent() && amount > 0 && fromAccount.get().getBalance() >= amount) {
+            Account from = fromAccount.get();
+            Account to = toAccount.get();
+            from.setBalance(from.getBalance() - amount);
+            to.setBalance(to.getBalance() + amount);
+            accountRepository.save(from);
+            accountRepository.save(to);
             return true;
         }
         return false;
     }
 
-    public Account getAccountById(long id) {
-        return accountRepository.findById(id).orElse(null);
-    }
-
     @Override
-    public List<Account> getAllAccounts() {
-        return accountRepository.findAll();
-    }
-
-    public Account deposit(String number, Double amount) {
-        Optional<Account> optionalAccount = accountRepository.findByNumber(number);
-        if (optionalAccount.isPresent() && amount > 0) {
-            Account account = optionalAccount.get();
-            account.setBalance(account.getBalance() + amount);
-            return accountRepository.save(account);
-        }
-        return null;
-    }
-
-    public Account withdraw(String number, Double amount) {
-        Optional<Account> optionalAccount = accountRepository.findByNumber(number);
-        if (optionalAccount.isPresent() && amount > 0) {
-            Account account = optionalAccount.get();
-            if (account.getBalance() >= amount) {
-                account.setBalance(account.getBalance() - amount);
-                return accountRepository.save(account);
-            }
-        }
-        return null;
-    }
-    public boolean transfer(String fromNumber, String toNumber, Double amount) {
-        Optional<Account> fromAccountOpt = accountRepository.findByNumber(fromNumber);
-        Optional<Account> toAccountOpt = accountRepository.findByNumber(toNumber);
-
-        if (fromAccountOpt.isPresent() && toAccountOpt.isPresent() && amount > 0) {
-            Account fromAccount = fromAccountOpt.get();
-            Account toAccount = toAccountOpt.get();
-
-            if (fromAccount.getBalance() >= amount) {
-                fromAccount.setBalance(fromAccount.getBalance() - amount);
-                toAccount.setBalance(toAccount.getBalance() + amount);
-                accountRepository.save(fromAccount);
-                accountRepository.save(toAccount);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public Account updateAccount(long id, Account account) {
-        account.setId(id);
-        accountRepository.save(account);
-        return account;
+    public Account update(Account account) {
+        return accountRepository.save(account);
     }
 
     @Override
