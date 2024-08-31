@@ -11,4 +11,5 @@ public interface CustomerService {
     boolean deleteById(long id);
     Page<Customer> findAll(Pageable pageable);
     Customer findById(long id);
+    Customer findByEmail(String email);
 }

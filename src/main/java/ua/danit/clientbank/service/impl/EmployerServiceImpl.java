@@ -46,7 +46,8 @@ public class EmployerServiceImpl implements EmployerService {
     }
 
     @Override
-    public void saveAll(List<Employer> employers) {
+    public List<Employer> saveAll(List<Employer> employers) {
         employerRepository.saveAll(employers);
+        return employers;
     }
 }

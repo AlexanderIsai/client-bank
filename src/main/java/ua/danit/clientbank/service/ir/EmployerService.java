@@ -9,5 +9,5 @@ public interface EmployerService {
     List<Employer> findAll();
     void deleteById(long id);
     Employer getById(long id);
-    void saveAll(List<Employer> employers);
+    List<Employer> saveAll(List<Employer> employers);
 }
