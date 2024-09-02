@@ -1,12 +1,11 @@
 package ua.danit.clientbank.service.impl;
 
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import ua.danit.clientbank.model.Account;
 import ua.danit.clientbank.repository.AccountRepository;
 
@@ -14,11 +13,18 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
 @ExtendWith(MockitoExtension.class)
 class AccountServiceImplTest {
 
     @Mock
     private AccountRepository accountRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private AccountServiceImpl accountService;
@@ -28,26 +34,31 @@ class AccountServiceImplTest {
         Account account = new Account();
         account.setId(1L);
         when(accountRepository.save(any(Account.class))).thenReturn(account);
+        doNothing().when(messagingTemplate).convertAndSend(eq("/topic/accountChange"), any(Account.class));
 
         Account savedAccount = accountService.save(account);
         assertNotNull(savedAccount);
+        assertEquals(1L, savedAccount.getId());
         verify(accountRepository).save(account);
+        verify(messagingTemplate).convertAndSend(eq("/topic/accountChange"), any(Account.class));
     }
 
     @Test
     void testDeleteById() {
-        doNothing().when(accountRepository).deleteById(1L);
+        doNothing().when(accountRepository).deleteById(anyLong());
+        doNothing().when(messagingTemplate).convertAndSend(eq("/topic/accountDeleted"), anyLong());
+
         accountService.deleteById(1L);
-        verify(accountRepository).deleteById(1L);
+        verify(accountRepository).deleteById(eq(1L));
+        verify(messagingTemplate).convertAndSend(eq("/topic/accountDeleted"), eq(1L));
     }
 
     @Test
     void testFindAll() {
-        Account account = new Account();
-        when(accountRepository.findAll()).thenReturn(Arrays.asList(account));
-
+        when(accountRepository.findAll()).thenReturn(Arrays.asList(new Account()));
         List<Account> accounts = accountService.findAll();
         assertFalse(accounts.isEmpty());
+        assertEquals(1, accounts.size());
         verify(accountRepository).findAll();
     }
 
@@ -55,11 +66,11 @@ class AccountServiceImplTest {
     void testFindById() {
         Account account = new Account();
         account.setId(1L);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
-
+        when(accountRepository.findById(anyLong())).thenReturn(Optional.of(account));
         Account foundAccount = accountService.findById(1L);
         assertNotNull(foundAccount);
-        verify(accountRepository).findById(1L);
+        assertEquals(1L, foundAccount.getId());
+        verify(accountRepository).findById(eq(1L));
     }
 
     @Test
@@ -92,14 +103,16 @@ class AccountServiceImplTest {
         fromAccount.setBalance(200.0);
         Account toAccount = new Account();
         toAccount.setBalance(100.0);
-        when(accountRepository.findByNumber("fromAccount")).thenReturn(Optional.of(fromAccount));
-        when(accountRepository.findByNumber("toAccount")).thenReturn(Optional.of(toAccount));
-        when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(accountRepository.findByNumber(eq("fromAccount"))).thenReturn(Optional.of(fromAccount));
+        when(accountRepository.findByNumber(eq("toAccount"))).thenReturn(Optional.of(toAccount));
+        doNothing().when(messagingTemplate).convertAndSend(anyString(), any(Account.class));
 
         boolean result = accountService.transfer("fromAccount", "toAccount", 50.0);
         assertTrue(result);
         assertEquals(150.0, fromAccount.getBalance());
         assertEquals(150.0, toAccount.getBalance());
+        verify(accountRepository, times(2)).save(any(Account.class));
+        verify(messagingTemplate, times(2)).convertAndSend(eq("/topic/accountChange"), any(Account.class));
     }
 
     @Test
@@ -107,15 +120,18 @@ class AccountServiceImplTest {
         Account account = new Account();
         account.setId(1L);
         when(accountRepository.save(any(Account.class))).thenReturn(account);
+        doNothing().when(messagingTemplate).convertAndSend(anyString(), any(Account.class));
 
         Account updatedAccount = accountService.update(account);
         assertNotNull(updatedAccount);
+        assertEquals(1L, updatedAccount.getId());
         verify(accountRepository).save(account);
+        verify(messagingTemplate).convertAndSend(eq("/topic/accountChange"), any(Account.class));
     }
 
     @Test
     void testFindByAccountNumberNotFound() {
-        when(accountRepository.findByNumber("nonexistent")).thenThrow(new RuntimeException("Account not found"));
+        when(accountRepository.findByNumber(anyString())).thenReturn(Optional.empty());
         assertThrows(RuntimeException.class, () -> accountService.findByAccountNumber("nonexistent"));
     }
 }
