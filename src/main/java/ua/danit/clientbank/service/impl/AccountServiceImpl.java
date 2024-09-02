@@ -1,9 +1,10 @@
 package ua.danit.clientbank.service.impl;
 
 import jakarta.transaction.Transactional;
-import ua.danit.clientbank.model.Account;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import ua.danit.clientbank.model.Account;
 import ua.danit.clientbank.repository.AccountRepository;
 import ua.danit.clientbank.service.ir.AccountService;
 
@@ -12,23 +13,23 @@ import java.util.Optional;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
-
-    @Autowired
-    public AccountServiceImpl(AccountRepository accountRepository) {
-        this.accountRepository = accountRepository;
-    }
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public Account save(Account account) {
-        return accountRepository.save(account);
+        Account savedAccount = accountRepository.save(account);
+        messagingTemplate.convertAndSend("/topic/accountChange", savedAccount);
+        return savedAccount;
     }
 
     @Override
     public void deleteById(long id) {
         accountRepository.deleteById(id);
+        messagingTemplate.convertAndSend("/topic/accountDeleted", id);
     }
 
     @Override
@@ -47,7 +48,9 @@ public class AccountServiceImpl implements AccountService {
                 .map(account -> {
                     if (amount > 0) {
                         account.setBalance(account.getBalance() + amount);
-                        return accountRepository.save(account);
+                        Account updatedAccount = accountRepository.save(account);
+                        messagingTemplate.convertAndSend("/topic/accountChange", updatedAccount);
+                        return updatedAccount;
                     }
                     return null;
                 }).orElse(null);
@@ -59,7 +62,9 @@ public class AccountServiceImpl implements AccountService {
                 .filter(account -> account.getBalance() >= amount)
                 .map(account -> {
                     account.setBalance(account.getBalance() - amount);
-                    return accountRepository.save(account);
+                    Account updatedAccount = accountRepository.save(account);
+                    messagingTemplate.convertAndSend("/topic/accountChange", updatedAccount);
+                    return updatedAccount;
                 }).orElse(null);
     }
 
@@ -75,6 +80,8 @@ public class AccountServiceImpl implements AccountService {
             to.setBalance(to.getBalance() + amount);
             accountRepository.save(from);
             accountRepository.save(to);
+            messagingTemplate.convertAndSend("/topic/accountChange", from);
+            messagingTemplate.convertAndSend("/topic/accountChange", to);
             return true;
         }
         return false;
@@ -82,7 +89,9 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Account update(Account account) {
-        return accountRepository.save(account);
+        Account updatedAccount = accountRepository.save(account);
+        messagingTemplate.convertAndSend("/topic/accountChange", updatedAccount);
+        return updatedAccount;
     }
 
     @Override
